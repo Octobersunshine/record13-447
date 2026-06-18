@@ -21,6 +21,8 @@ type SessionStore interface {
 	Delete(id string) error
 	FreezeByUserID(userID string, reason string) ([]*model.Session, error)
 	UnfreezeByUserID(userID string, reason string) ([]*model.Session, error)
+	FreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session
+	UnfreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session
 	List() ([]*model.Session, error)
 }
 
@@ -157,4 +159,46 @@ func (s *InMemorySessionStore) List() ([]*model.Session, error) {
 		result = append(result, session)
 	}
 	return result, nil
+}
+
+func (s *InMemorySessionStore) FreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userIDSet := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		userIDSet[id] = struct{}{}
+	}
+
+	result := make(map[string][]*model.Session)
+	for _, session := range s.sessions {
+		if _, ok := userIDSet[session.UserID]; ok && session.Status == model.SessionStatusActive {
+			session.Status = model.SessionStatusFrozen
+			session.UpdatedAt = time.Now()
+			result[session.UserID] = append(result[session.UserID], session)
+		}
+	}
+
+	return result
+}
+
+func (s *InMemorySessionStore) UnfreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userIDSet := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		userIDSet[id] = struct{}{}
+	}
+
+	result := make(map[string][]*model.Session)
+	for _, session := range s.sessions {
+		if _, ok := userIDSet[session.UserID]; ok && session.Status == model.SessionStatusFrozen {
+			session.Status = model.SessionStatusActive
+			session.UpdatedAt = time.Now()
+			result[session.UserID] = append(result[session.UserID], session)
+		}
+	}
+
+	return result
 }

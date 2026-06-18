@@ -205,3 +205,47 @@ func (h *SessionHandler) RefreshCache(c *gin.Context) {
 		"message": "cache refreshed successfully from persistent storage",
 	})
 }
+
+func (h *SessionHandler) BatchFreezeSessions(c *gin.Context) {
+	var req model.BatchFreezeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "empty user_ids list",
+			"message": "user_ids must contain at least one user ID",
+		})
+		return
+	}
+
+	response := h.service.BatchFreezeUserSessions(req.UserIDs, req.Reason)
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *SessionHandler) BatchUnfreezeSessions(c *gin.Context) {
+	var req model.BatchUnfreezeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "empty user_ids list",
+			"message": "user_ids must contain at least one user ID",
+		})
+		return
+	}
+
+	response := h.service.BatchUnfreezeUserSessions(req.UserIDs, req.Reason)
+	c.JSON(http.StatusOK, response)
+}

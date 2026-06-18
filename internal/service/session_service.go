@@ -105,3 +105,65 @@ func (s *SessionService) RefreshCache() error {
 	}
 	return nil
 }
+
+func (s *SessionService) BatchFreezeUserSessions(userIDs []string, reason string) *model.BatchFreezeResponse {
+	response := &model.BatchFreezeResponse{
+		Results:     make([]model.UserFreezeResult, 0, len(userIDs)),
+		TotalUsers:  len(userIDs),
+		Message:     "batch freeze completed",
+	}
+
+	results := s.store.FreezeByUserIDs(userIDs, reason)
+
+	for _, userID := range userIDs {
+		sessions, ok := results[userID]
+		if ok {
+			response.Results = append(response.Results, model.UserFreezeResult{
+				UserID:      userID,
+				FrozenCount: len(sessions),
+				Sessions:    sessions,
+			})
+			response.SuccessCount++
+			response.TotalFrozen += len(sessions)
+		} else {
+			response.Results = append(response.Results, model.UserFreezeResult{
+				UserID: userID,
+				Error:  "user has no active sessions or user not found",
+			})
+			response.FailCount++
+		}
+	}
+
+	return response
+}
+
+func (s *SessionService) BatchUnfreezeUserSessions(userIDs []string, reason string) *model.BatchUnfreezeResponse {
+	response := &model.BatchUnfreezeResponse{
+		Results:     make([]model.UserUnfreezeResult, 0, len(userIDs)),
+		TotalUsers:  len(userIDs),
+		Message:     "batch unfreeze completed",
+	}
+
+	results := s.store.UnfreezeByUserIDs(userIDs, reason)
+
+	for _, userID := range userIDs {
+		sessions, ok := results[userID]
+		if ok {
+			response.Results = append(response.Results, model.UserUnfreezeResult{
+				UserID:         userID,
+				UnfrozenCount:  len(sessions),
+				Sessions:       sessions,
+			})
+			response.SuccessCount++
+			response.TotalUnfrozen += len(sessions)
+		} else {
+			response.Results = append(response.Results, model.UserUnfreezeResult{
+				UserID: userID,
+				Error:  "user has no frozen sessions or user not found",
+			})
+			response.FailCount++
+		}
+	}
+
+	return response
+}

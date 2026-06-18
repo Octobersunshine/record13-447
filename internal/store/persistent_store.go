@@ -224,6 +224,56 @@ func (s *FileSessionStore) List() ([]*model.Session, error) {
 	return result, nil
 }
 
+func (s *FileSessionStore) FreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userIDSet := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		userIDSet[id] = struct{}{}
+	}
+
+	result := make(map[string][]*model.Session)
+	for _, session := range s.sessions {
+		if _, ok := userIDSet[session.UserID]; ok && session.Status == model.SessionStatusActive {
+			session.Status = model.SessionStatusFrozen
+			session.UpdatedAt = time.Now()
+			result[session.UserID] = append(result[session.UserID], session)
+		}
+	}
+
+	if len(result) > 0 {
+		s.saveLocked()
+	}
+
+	return result
+}
+
+func (s *FileSessionStore) UnfreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	userIDSet := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		userIDSet[id] = struct{}{}
+	}
+
+	result := make(map[string][]*model.Session)
+	for _, session := range s.sessions {
+		if _, ok := userIDSet[session.UserID]; ok && session.Status == model.SessionStatusFrozen {
+			session.Status = model.SessionStatusActive
+			session.UpdatedAt = time.Now()
+			result[session.UserID] = append(result[session.UserID], session)
+		}
+	}
+
+	if len(result) > 0 {
+		s.saveLocked()
+	}
+
+	return result
+}
+
 func (s *FileSessionStore) saveLocked() error {
 	var sessions []*model.Session
 	for _, session := range s.sessions {

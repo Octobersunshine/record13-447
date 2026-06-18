@@ -172,6 +172,50 @@ func (s *CachedSessionStore) UnfreezeByUserID(userID string, reason string) ([]*
 	return updatedSessions, nil
 }
 
+func (s *CachedSessionStore) FreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	result := s.persistentStore.FreezeByUserIDs(userIDs, reason)
+
+	for _, sessions := range result {
+		for _, session := range sessions {
+			if _, err := s.cacheStore.GetByID(session.ID); err == nil {
+				s.cacheStore.Update(session)
+			} else {
+				s.cacheStore.Create(session)
+			}
+		}
+	}
+
+	for _, userID := range userIDs {
+		s.invalidateUserCache(userID)
+	}
+
+	s.invalidateAllSessionsCache()
+
+	return result
+}
+
+func (s *CachedSessionStore) UnfreezeByUserIDs(userIDs []string, reason string) map[string][]*model.Session {
+	result := s.persistentStore.UnfreezeByUserIDs(userIDs, reason)
+
+	for _, sessions := range result {
+		for _, session := range sessions {
+			if _, err := s.cacheStore.GetByID(session.ID); err == nil {
+				s.cacheStore.Update(session)
+			} else {
+				s.cacheStore.Create(session)
+			}
+		}
+	}
+
+	for _, userID := range userIDs {
+		s.invalidateUserCache(userID)
+	}
+
+	s.invalidateAllSessionsCache()
+
+	return result
+}
+
 func (s *CachedSessionStore) List() ([]*model.Session, error) {
 	return s.persistentStore.List()
 }
