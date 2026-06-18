@@ -22,6 +22,7 @@ func SetupRouter(sessionHandler *handler.SessionHandler) *gin.Engine {
 			{
 				admin.POST("/freeze", sessionHandler.FreezeSession)
 				admin.POST("/unfreeze", sessionHandler.UnfreezeSession)
+				admin.POST("/cache/refresh", sessionHandler.RefreshCache)
 			}
 		}
 	}

@@ -191,3 +191,17 @@ func (h *SessionHandler) ValidateSession(c *gin.Context) {
 		Message: "session is valid",
 	})
 }
+
+func (h *SessionHandler) RefreshCache(c *gin.Context) {
+	if err := h.service.RefreshCache(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to refresh cache",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "cache refreshed successfully from persistent storage",
+	})
+}

@@ -98,3 +98,10 @@ func (s *SessionService) ValidateSession(token string) (*model.Session, error) {
 func (s *SessionService) ListSessions() ([]*model.Session, error) {
 	return s.store.List()
 }
+
+func (s *SessionService) RefreshCache() error {
+	if cachedStore, ok := s.store.(interface{ RefreshCache() error }); ok {
+		return cachedStore.RefreshCache()
+	}
+	return nil
+}
